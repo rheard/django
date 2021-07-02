@@ -9,6 +9,7 @@ from django.utils.functional import cached_property
 # Connection types
 AND = 'AND'
 OR = 'OR'
+XOR = 'XOR'
 
 
 class WhereNode(tree.Node):
@@ -42,7 +43,7 @@ class WhereNode(tree.Node):
         # then we need to push the whole branch to HAVING clause.
         may_need_split = (
             (in_negated and self.connector == AND) or
-            (not in_negated and self.connector == OR))
+            (not in_negated and self.connector in (OR, XOR)))
         if may_need_split and self.contains_aggregate:
             return None, self
         where_parts = []
@@ -75,6 +76,12 @@ class WhereNode(tree.Node):
             full_needed, empty_needed = len(self.children), 1
         else:
             full_needed, empty_needed = 1, len(self.children)
+
+        if self.connector == XOR and not connection.features.supports_logical_xor:
+            # Convert `A XOR B` to `(A OR B) AND NOT (A AND B)`.
+            lhs = self.__class__(self.children, OR)
+            rhs = self.__class__(self.children, AND, negated=True)
+            return self.__class__((lhs, rhs), AND, self.negated).as_sql(compiler, connection)
 
         for child in self.children:
             try:

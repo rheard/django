@@ -1966,7 +1966,7 @@ class ReprTests(SimpleTestCase):
 
 
 class CombinableTests(SimpleTestCase):
-    bitwise_msg = 'Use .bitand() and .bitor() for bitwise logical operations.'
+    bitwise_msg = 'Use .bitand(), .bitor(), and .bitxor() for bitwise logical operations.'
 
     def test_negation(self):
         c = Combinable()

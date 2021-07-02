@@ -1992,7 +1992,6 @@ class QuerysetOrderedTests(unittest.TestCase):
         self.assertIs(qs.order_by('name').ordered, True)
 
 
-@skipUnlessDBFeature('allow_sliced_subqueries_with_in')
 class SubqueryTests(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -2001,6 +2000,7 @@ class SubqueryTests(TestCase):
         NamedCategory.objects.create(id=3, name='third')
         NamedCategory.objects.create(id=4, name='fourth')
 
+    @skipUnlessDBFeature('allow_sliced_subqueries_with_in')
     def test_ordered_subselect(self):
         "Subselects honor any manual ordering"
         query = DumbCategory.objects.filter(id__in=DumbCategory.objects.order_by('-id')[0:2])
@@ -2015,6 +2015,7 @@ class SubqueryTests(TestCase):
         query = DumbCategory.objects.filter(id__in=DumbCategory.objects.order_by('-id')[2:])
         self.assertEqual(set(query.values_list('id', flat=True)), {1, 2})
 
+    @skipUnlessDBFeature('allow_sliced_subqueries_with_in')
     def test_slice_subquery_and_query(self):
         """
         Slice a query that has a sliced subquery
@@ -2028,6 +2029,7 @@ class SubqueryTests(TestCase):
         query = DumbCategory.objects.filter(id__in=DumbCategory.objects.order_by('-id')[2:])[1:]
         self.assertEqual({x.id for x in query}, {2})
 
+    @skipUnlessDBFeature('allow_sliced_subqueries_with_in')
     def test_related_sliced_subquery(self):
         """
         Related objects constraints can safely contain sliced subqueries.
@@ -2044,6 +2046,7 @@ class SubqueryTests(TestCase):
         )
         self.assertEqual({x.id for x in query}, {mm2.id})
 
+    @skipUnlessDBFeature('allow_sliced_subqueries_with_in')
     def test_sliced_delete(self):
         "Delete queries can safely contain sliced subqueries"
         DumbCategory.objects.filter(id__in=DumbCategory.objects.order_by('-id')[0:1]).delete()
@@ -2055,6 +2058,7 @@ class SubqueryTests(TestCase):
         DumbCategory.objects.filter(id__in=DumbCategory.objects.order_by('-id')[1:]).delete()
         self.assertEqual(set(DumbCategory.objects.values_list('id', flat=True)), {3})
 
+    @skipUnlessDBFeature('allow_sliced_subqueries_with_in')
     def test_distinct_ordered_sliced_subquery(self):
         # Implicit values('id').
         self.assertSequenceEqual(
@@ -2075,6 +2079,18 @@ class SubqueryTests(TestCase):
                     double_id=F('id') * 2
                 ).order_by('id').distinct().values('double_id')[0:2],
             ).order_by('id').values_list('id', flat=True), [2, 4]
+        )
+
+    def test_logical_xor_subquery(self):
+        """Subquery should support logical XOR on supported databases"""
+        # Use subqueries to compute Q(name='first') ^ Q(id__lte=2)
+        self.assertQuerysetEqual(
+            NamedCategory.objects.filter(
+                Exists(NamedCategory.objects.filter(id=OuterRef('id'), name='first')) ^
+                Exists(NamedCategory.objects.filter(id=OuterRef('id'), id__lte=2))
+            ),
+            [2],
+            attrgetter('id'),
         )
 
 
@@ -2110,6 +2126,30 @@ class QuerySetBitwiseOperationTests(TestCase):
         qs1 = Classroom.objects.filter(has_blackboard=False).order_by('-pk')[:1]
         qs2 = Classroom.objects.filter(has_blackboard=True).order_by('-name')[:1]
         self.assertCountEqual(qs1 | qs2, [self.room_3, self.room_4])
+
+    @skipUnlessDBFeature('allow_sliced_subqueries_with_in')
+    def test_xor_with_rhs_slice(self):
+        qs1 = Classroom.objects.filter(has_blackboard=True)
+        qs2 = Classroom.objects.filter(has_blackboard=False)[:1]
+        self.assertCountEqual(qs1 ^ qs2, [self.room_1, self.room_2, self.room_3])
+
+    @skipUnlessDBFeature('allow_sliced_subqueries_with_in')
+    def test_xor_with_lhs_slice(self):
+        qs1 = Classroom.objects.filter(has_blackboard=True)[:1]
+        qs2 = Classroom.objects.filter(has_blackboard=False)
+        self.assertCountEqual(qs1 ^ qs2, [self.room_1, self.room_2, self.room_4])
+
+    @skipUnlessDBFeature('allow_sliced_subqueries_with_in')
+    def test_xor_with_both_slice(self):
+        qs1 = Classroom.objects.filter(has_blackboard=False)[:1]
+        qs2 = Classroom.objects.filter(has_blackboard=True)[:1]
+        self.assertCountEqual(qs1 ^ qs2, [self.room_1, self.room_2])
+
+    @skipUnlessDBFeature('allow_sliced_subqueries_with_in')
+    def test_xor_with_both_slice_and_ordering(self):
+        qs1 = Classroom.objects.filter(has_blackboard=False).order_by('-pk')[:1]
+        qs2 = Classroom.objects.filter(has_blackboard=True).order_by('-name')[:1]
+        self.assertCountEqual(qs1 ^ qs2, [self.room_3, self.room_4])
 
     def test_subquery_aliases(self):
         combined = School.objects.filter(pk__isnull=False) & School.objects.filter(

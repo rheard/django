@@ -93,7 +93,7 @@ class Combinable:
         if getattr(self, 'conditional', False) and getattr(other, 'conditional', False):
             return Q(self) & Q(other)
         raise NotImplementedError(
-            "Use .bitand() and .bitor() for bitwise logical operations."
+            "Use .bitand(), .bitor(), and .bitxor() for bitwise logical operations."
         )
 
     def bitand(self, other):
@@ -105,6 +105,13 @@ class Combinable:
     def bitrightshift(self, other):
         return self._combine(other, self.BITRIGHTSHIFT, False)
 
+    def __xor__(self, other):
+        if getattr(self, 'conditional', False) and getattr(other, 'conditional', False):
+            return Q(self) ^ Q(other)
+        raise NotImplementedError(
+            "Use .bitand(), .bitor(), and .bitxor() for bitwise logical operations."
+        )
+
     def bitxor(self, other):
         return self._combine(other, self.BITXOR, False)
 
@@ -112,7 +119,7 @@ class Combinable:
         if getattr(self, 'conditional', False) and getattr(other, 'conditional', False):
             return Q(self) | Q(other)
         raise NotImplementedError(
-            "Use .bitand() and .bitor() for bitwise logical operations."
+            "Use .bitand(), .bitor(), and .bitxor() for bitwise logical operations."
         )
 
     def bitor(self, other):
@@ -138,12 +145,17 @@ class Combinable:
 
     def __rand__(self, other):
         raise NotImplementedError(
-            "Use .bitand() and .bitor() for bitwise logical operations."
+            "Use .bitand(), .bitor(), and .bitxor() for bitwise logical operations."
         )
 
     def __ror__(self, other):
         raise NotImplementedError(
-            "Use .bitand() and .bitor() for bitwise logical operations."
+            "Use .bitand(), .bitor(), and .bitxor() for bitwise logical operations."
+        )
+
+    def __rxor__(self, other):
+        raise NotImplementedError(
+            "Use .bitand(), .bitor(), and .bitxor() for bitwise logical operations."
         )
 
 

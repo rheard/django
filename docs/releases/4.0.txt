@@ -280,6 +280,11 @@ Models
 * :class:`~django.db.models.Lookup` expressions may now be used in ``QuerySet``
   annotations, aggregations, and directly in filters.
 
+* :class:`~django.db.models.Q` and :class:`~django.db.models.query.QuerySet`
+  now support ``__xor__``, and will be compiled on MySQL to logical ``XOR``.
+  Unsupported database backends will convert the query to an equivalent using
+  only ``AND``, ``OR``, and ``NOT``.
+
 Requests and Responses
 ~~~~~~~~~~~~~~~~~~~~~~
 
